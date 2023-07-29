@@ -11,4 +11,8 @@ class HelloWorldUser(HttpUser):
     @task
     def load_poll(self):
         self.client.get("/")
+
+    @task
+    def load_poll(self):
+        self.client.get("/Translator")
     

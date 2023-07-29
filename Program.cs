@@ -1,4 +1,8 @@
-﻿using Voting.Data;
+﻿using k8s.KubeConfigModels;
+using Orleans.Configuration;
+using Orleans.Hosting;
+using System.Net;
+using Voting.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseOrleans((ctx, orleansBuilder) =>
@@ -14,6 +18,24 @@ builder.Host.UseOrleans((ctx, orleansBuilder) =>
     }
     else
     {
+        //var storageConnectionString = builder.Configuration.GetValue<string>(EnvironmentVariables.AzureStorageConnectionString);
+        
+
+        var connectionString =
+            builder.Configuration["ORLEANS_AZURE_STORAGE_CONNECTION_STRING"];
+
+        orleansBuilder
+            //.ConfigureEndpoints(endpointAddress, siloPort, gatewayPort)
+            .Configure<ClusterOptions>(
+                options =>
+                {
+                    options.ClusterId = "PollCluster";
+                    options.ServiceId = nameof(PollService);
+                }).UseAzureStorageClustering(
+            options => options.ConfigureTableServiceClient(connectionString));
+        orleansBuilder.AddAzureTableGrainStorage(
+            "votes",
+            options => options.ConfigureTableServiceClient(connectionString));
         // In Kubernetes, we use environment variables and the pod manifest
         //orleansBuilder.UseKubernetesHosting();
 
@@ -27,8 +49,10 @@ builder.Host.UseOrleans((ctx, orleansBuilder) =>
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<PollService>();
 builder.Services.AddScoped<DemoService>();
+//builder.Services.AddScoped<TranslatorService>();
 
 var app = builder.Build();
 

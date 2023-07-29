@@ -1,0 +1,89 @@
+﻿@page "/Translator"
+@using Orleans
+@*@using Voting.Data*@
+@using VotingContract
+@inject IGrainFactory _grainFactory;
+@*@inject TranslatorService TranslatorService*@
+<h1>Translator</h1>
+
+<p>Welcome to Translator, a sample app that shows you how Orleans can be used to implement distributed processing. Enter in the phrase you want to translate into multiple languages and click the translate button.</p>
+
+<h2>Perform Translation</h2>
+
+<input type="text" @bind="currentPhrase" class="col-10" />
+<button class="btn btn-primary" @onclick="Translate">Translate</button>
+<hr size="4" />
+
+<h2>Select Languages</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th style="width: 140px;"></th>
+            <th style="width: 80px;">Code</th>
+            <th style="width: 120px;">Language</th>
+            <th>Translation</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var language in languages)
+        {
+            <tr>
+                <td style="width: 140px;">
+                    @if (language.IsTranslatorReady)
+                    {
+                        <button class="btn btn-success" @onclick="() => ToggleTranslator(language.Code)">Deactivate</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-warning" @onclick="() => ToggleTranslator(language.Code)">Activate</button>
+                    }
+                </td>
+                <td style="width: 80px;">@language.Code</td>
+                <td style="width: 120px;">@language.Name</td>
+                <td>@translations.FirstOrDefault(_ => _.Language == language.Code)?.Translation</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+
+@code
+{
+    
+    string currentPhrase = "Hello World";
+    List<LanguageItem> languages = new List<LanguageItem>();
+    List<TranslationResponse> translations = new List<TranslationResponse>();
+    ITranslationServer _translationServer;
+    protected override async Task OnInitializedAsync()
+    {
+        //languages=await TranslatorService.GetLanguages(Guid.Empty);
+        _translationServer = _grainFactory.GetGrain<ITranslationServer>(Guid.Empty);
+            languages = await _translationServer.GetAllLanguages();
+        await base.OnInitializedAsync();
+    }
+    protected async Task ToggleTranslator(string languageCode)
+    {
+        if (_translationServer != null)
+        {
+
+            await _translationServer.ToggleLanguageActiveStatus(languageCode);
+            
+            languages = await _translationServer.GetAllLanguages();
+            await Translate();
+            
+            base.StateHasChanged();
+        }
+    }
+    protected async Task Translate()
+    {
+        if (_translationServer != null)
+        {
+            translations.Clear();
+            translations = await _translationServer.Translate(currentPhrase);
+            base.StateHasChanged();
+        }
+    }
+   
+}

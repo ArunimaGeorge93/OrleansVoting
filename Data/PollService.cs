@@ -1,4 +1,4 @@
-using VotingContract;
+﻿using VotingContract;
 
 namespace Voting.Data;
 
